@@ -22,6 +22,8 @@ namespace PetsV
         protected internal FileService _fileService;
         protected internal MenuService _menuService;
         protected internal PetService _petService;
+        internal Config _config;
+        internal Lang _lang;
         internal CustomiFruit _iFruit;
         internal MenuPool _pool;
         internal UIMenu _menuAnimalArk;
@@ -38,7 +40,8 @@ namespace PetsV
         private readonly float _heading = 20f;
         private bool _isPlayerInShopMenu;
         private bool _isPlayerDrivingWithPets;
-        private bool _isPlayerInPetMenu;
+        private int _petSceneID;
+        private bool _isPetSceneRunning;
 
         public static PetsV Instance;
 
@@ -48,7 +51,8 @@ namespace PetsV
              * Initialization
              */
             _fileService = new FileService();
-            _fileService.CreateSetupIfNotExist();
+            _config = _fileService.Initialize();
+            _lang = _fileService.GetI18nLang(_config.Lang);
             _petService = new PetService();
             _currentPetSetup = new Pet();
             _spawnedPets = new ObservableCollection<Pet>();
@@ -93,12 +97,12 @@ namespace PetsV
             /**
              * For blips
              */
-            _petShopFrontDoorBlip = World.CreateBlip(Config.PetShopPos);
+            _petShopFrontDoorBlip = World.CreateBlip(Configuration.PetStorePos);
             if (_petShopFrontDoorBlip.Exists())
             {
                 _petShopFrontDoorBlip.Sprite = BlipSprite.Chop;
                 _petShopFrontDoorBlip.Color = BlipColor.WhiteNotPure;
-                _petShopFrontDoorBlip.Name = "Animal Ark";
+                _petShopFrontDoorBlip.Name = _lang.AnimalArk;
             }
 
 
@@ -121,10 +125,10 @@ namespace PetsV
                     {
                         if (!_isPlayerInShopMenu)
                         {
-                            GTA.UI.Screen.ShowHelpTextThisFrame("Press ~INPUT_CONTEXT~ to view all available pets.");
+                            GTA.UI.Screen.ShowHelpTextThisFrame(_lang.PressKeyToPetStore);
                             if (Game.IsControlJustPressed(GTA.Control.Context))
                             {
-                                _camera = World.CreateCamera(Config.ShowcaseCameraPos, Config.ShowcaseCameraRot, Config.ShowcaseCameraFov);
+                                _camera = World.CreateCamera(Configuration.ShowcaseCameraPos, Configuration.ShowcaseCameraRot, Configuration.ShowcaseCameraFov);
                                 _currentShowcaseModel = World.CreatePed(new Model(_petService.GetModelName(_currentPetSetup.Species)), _petShowcasePos, _heading);
                                 Function.Call(Hash.SET_PED_COMPONENT_VARIATION, _currentShowcaseModel, 0, 0, _currentPetSetup.Breed, 0);
                                 _isPlayerInShopMenu = true;
@@ -139,7 +143,7 @@ namespace PetsV
             if (_isPlayerInShopMenu)
             {
                 if (!_pool.IsAnyMenuOpen())
-                    GTA.UI.Screen.ShowHelpTextThisFrame("Press ~INPUT_FRONTEND_RDOWN~ to open menu.\nPress ~INPUT_FRONTEND_RRIGHT~ to exit.", beep: false);
+                    GTA.UI.Screen.ShowHelpTextThisFrame($"{_lang.PressKeyToOpenMenu}\n{_lang.PressKeyToExit}", beep: false);
             }
 
             //检测玩家是否死亡、更换主角或Ped模型
@@ -168,7 +172,7 @@ namespace PetsV
                         {
                             if (_spawnedPets[i].Entity.Position.DistanceTo(_player.Position) < 2f)
                             {
-                                GTA.UI.Screen.ShowHelpTextThisFrame($"Press ~INPUT_CONTEXT~ to interact with ~b~{_spawnedPets[i].Name}~w~.");
+                                GTA.UI.Screen.ShowHelpTextThisFrame(_lang.PressKeyToInteractWith + $" ~b~{_spawnedPets[i].Name}~w~.");
                                 if (Game.IsControlJustPressed(GTA.Control.Context))
                                 {
                                     var pet = _spawnedPets[i];
@@ -182,30 +186,26 @@ namespace PetsV
                     }
                 }
             }
-            if (_isPlayerInPetMenu)
-            {
-
-            }
 
             // 如果有玩家生成的宠物
             // * 在所有设计收回宠物、删除宠物的检查中，这个判断式将放在最下面，不然 Ped.Delete() 也会触发 Ped.isDead=true
-            //if (_spawnedPets.Count > 0)
-            //{
-            //    // 循环检测每一只的状态
-            //    for (int i = 0; i < _spawnedPets.Count; i++)
-            //    {
-            //        // 如果有死亡的，则会将其Status设置为Dead，并且进行消档
-            //        if (_spawnedPets[i].Entity.IsDead)
-            //        {
-            //            _spawnedPets[i].Status = Status.Dead;
-            //            string json = JsonConvert.SerializeObject(_spawnedPets[i], Formatting.Indented);
-            //            File.WriteAllText($@"{Config.PathToPetsFolder}\{_spawnedPets[i].Name}.json", json);
-            //            _spawnedPets.RemoveAt(i);
-            //            UIMenuListItem list = (UIMenuListItem)_menuPetSpawner.MenuItems.First();
-            //            list.Items = _fileService.GetAllPetsFromDirectory();
-            //        }
-            //    }
-            //}
+            if (_spawnedPets.Count > 0)
+            {
+                // 循环检测每一只的状态
+                for (int i = 0; i < _spawnedPets.Count; i++)
+                {
+                    // 如果有死亡的，则会将其Status设置为Dead，并且进行消档
+                    if (_spawnedPets[i].Entity.IsDead)
+                    {
+                        _spawnedPets[i].Status = Status.Dead;
+                        string json = JsonConvert.SerializeObject(_spawnedPets[i], Formatting.Indented);
+                        File.WriteAllText($@"{Configuration.PathToPetsFolder}\{_spawnedPets[i].Name}.json", json);
+                        _spawnedPets.RemoveAt(i);
+                        UIMenuListItem list = (UIMenuListItem)_menuPetSpawner.MenuItems.First();
+                        list.Items = _fileService.GetAllPetsFromDirectory();
+                    }
+                }
+            }
 
             // 宠物进入、离开载具时
             if (_spawnedPets.Count > 0)
@@ -213,28 +213,36 @@ namespace PetsV
                 if (_player.IsInVehicle())
                 {
                     Vehicle vehicle = _player.CurrentVehicle;
-                    switch (vehicle.Type)
+                    if (vehicle.IsSeatFree(VehicleSeat.Passenger))
                     {
-                        case VehicleType.Automobile:
-                            foreach (var pet in _spawnedPets)
-                            {
-                                pet.Entity.SetIntoVehicle(vehicle, VehicleSeat.Passenger);
-                                //pet.Entity.Task.PlayAnimation("creatures@retriever@amb@world_dog_sitting@base", "base");
-                                pet.Entity.SetNoCollision(pet.Entity.CurrentVehicle, true);
+                        switch (vehicle.Type)
+                        {
+                            case VehicleType.Automobile:
+                                foreach (var pet in _spawnedPets)
+                                {
+                                    if (_isPlayerDrivingWithPets)
+                                    {
+                                        continue;
+                                    }
 
-                                Vector3 offset = new Vector3(0.0f, 0.0f, -0.3f); // Example offset (adjust as needed)
-                                Vector3 pedPosition = Function.Call<Vector3>(Hash.GET_ENTITY_COORDS, pet.Entity, true);
-                                Vector3 vehiclePosition = Function.Call<Vector3>(Hash.GET_ENTITY_COORDS, pet.Entity.CurrentVehicle, true);
-                                Vector3 relativePosition = pedPosition - vehiclePosition;
-                                Vector3 newPosition = vehiclePosition + offset + relativePosition;
-                                Function.Call(Hash.SET_ENTITY_COORDS, pet.Entity, newPosition.X, newPosition.Y, newPosition.Z, true, true, true, false);
-                                if (!_isPlayerDrivingWithPets) _isPlayerDrivingWithPets = true;
-                            }
-                            break;
+                                    pet.Entity.SetIntoVehicle(vehicle, VehicleSeat.Passenger);
+                                    pet.Entity.Task.PlayAnimation("creatures@rottweiler@in_vehicle@std_car", "sit", 8f, -8f, -1, AnimationFlags.StayInEndFrame, 0f);
 
-                        default:
-                            GTA.UI.Screen.ShowSubtitle("This vehicle cannot carry pets.", 1000);
-                            break;
+                                    //pet.Entity.SetNoCollision(pet.Entity.CurrentVehicle, true);
+                                    //Vector3 offset = new Vector3(0.0f, 0.0f, -0.3f); // Example offset (adjust as needed)
+                                    //Vector3 pedPosition = Function.Call<Vector3>(Hash.GET_ENTITY_COORDS, pet.Entity, true);
+                                    //Vector3 vehiclePosition = Function.Call<Vector3>(Hash.GET_ENTITY_COORDS, pet.Entity.CurrentVehicle, true);
+                                    //Vector3 relativePosition = pedPosition - vehiclePosition;
+                                    //Vector3 newPosition = vehiclePosition + offset + relativePosition;
+                                    //Function.Call(Hash.SET_ENTITY_COORDS, pet.Entity, newPosition.X, newPosition.Y, newPosition.Z, true, true, true, false);
+                                    _isPlayerDrivingWithPets = true;
+                                }
+                                break;
+
+                            default:
+                                GTA.UI.Screen.ShowSubtitle(_lang.PetDontFitInVeh, 1000);
+                                break;
+                        }
                     }
                 }
             }
@@ -244,16 +252,42 @@ namespace PetsV
                 {
                     if (!_player.IsInVehicle())
                     {
-                        foreach (Pet pet in _spawnedPets)
+                        if (!Function.Call<bool>(Hash.IS_SYNCHRONIZED_SCENE_RUNNING, _petSceneID))
                         {
-                            pet.Entity.Position = _player.Position + _player.ForwardVector * 2;
-                            //pet.Entity.SetNoCollision(veh, false);
-                            //pet.Entity.Task.ClearAnimation("creatures@retriever@amb@world_dog_sitting@base", "base");
                             _isPlayerDrivingWithPets = false;
+                            foreach (Pet pet in _spawnedPets)
+                            {
+                                if (!pet.Entity.IsInVehicle())
+                                {
+                                    continue;
+                                }
+                                var vehicle = pet.Entity.CurrentVehicle;
+                                Function.Call(Hash.REQUEST_ANIM_DICT, "creatures@rottweiler@in_vehicle@std_car");
+                                _petSceneID = Function.Call<int>(Hash.CREATE_SYNCHRONIZED_SCENE, 0f, 0f, 0f, 0f, 0f, 0f, 2);
+                                Function.Call(Hash.ATTACH_SYNCHRONIZED_SCENE_TO_ENTITY, _petSceneID, vehicle, Function.Call<int>(Hash.GET_ENTITY_BONE_INDEX_BY_NAME, vehicle, "seat_pside_f"));
+                                Function.Call(Hash.TASK_SYNCHRONIZED_SCENE, pet.Entity, _petSceneID, "creatures@rottweiler@in_vehicle@std_car", "get_out", 1000f, -8f, 10, 0, 1148846080, 0);
+                                Function.Call(Hash.FORCE_PED_AI_AND_ANIMATION_UPDATE, pet.Entity, false, false);
+
+                                _isPetSceneRunning = true;
+
+                                while (_isPetSceneRunning)
+                                {
+                                    Wait(0);
+                                    if (Function.Call<float>(Hash.GET_SYNCHRONIZED_SCENE_PHASE, _petSceneID) > 0.99f)
+                                    {
+                                        _isPetSceneRunning = false;
+                                    }
+                                }
+
+                                Wait(0);
+
+                                pet.Entity.Task.ClearAllImmediately();
+                            }
                         }
                     }
                 }
             }
+
 
             /**
              * 1: User has finished editing
@@ -296,7 +330,7 @@ namespace PetsV
         private void OnAnimalArkMenuItemSelect(UIMenu sender, UIMenuItem selectedItem, int index)
         {
             // Name
-            if (selectedItem.Text == "Name")
+            if (selectedItem.Text == _lang.Name)
             {
                 _pool.CloseAllMenus();
                 Wait(100);
@@ -306,23 +340,23 @@ namespace PetsV
             }
 
             // Confirm payment
-            if (selectedItem.Text == "~w~Confirm")
+            if (selectedItem.Text == _lang.wConfirm)
             {
                 if (_currentPetSetup.Name == null)
                 {
-                    GTA.UI.Screen.ShowSubtitle("You haven't filled in your pet's name yet.");
+                    GTA.UI.Screen.ShowSubtitle(_lang.PetNameEmpty);
                     return;
                 }
-                if (File.Exists($@"{Config.PathToPetsFolder}\{_currentPetSetup.Name}.json"))
+                if (File.Exists($@"{Configuration.PathToPetsFolder}\{_currentPetSetup.Name}.json"))
                 {
-                    GTA.UI.Screen.ShowSubtitle("A pet with the same name already exists.");
+                    GTA.UI.Screen.ShowSubtitle(_lang.PetNameExisted);
                     return;
                 }
                 try
                 {
                     _currentPetSetup.Model = _petService.GetModelName(_currentPetSetup.Species);
                     string json = JsonConvert.SerializeObject(_currentPetSetup, Formatting.Indented);
-                    File.WriteAllText($@"{Config.PathToPetsFolder}\{_currentPetSetup.Name}.json", json);
+                    File.WriteAllText($@"{Configuration.PathToPetsFolder}\{_currentPetSetup.Name}.json", json);
                 }
                 catch (Exception e)
                 {
@@ -339,13 +373,13 @@ namespace PetsV
 
         private void OnAnimalArkMenuListChanged(UIMenu sender, UIMenuListItem listItem, int newIndex)
         {
-            if (listItem.Text == "Gender")
+            if (listItem.Text == _lang.Gender)
             {
                 // 保存性别设置
                 _currentPetSetup.Gender = (Gender)newIndex;
                 return;
             }
-            if (listItem.Text == "Pets")
+            if (listItem.Text == _lang.Pets)
             {
                 // 保存物种设置
                 _currentPetSetup.Species = (Species)newIndex;
@@ -360,7 +394,7 @@ namespace PetsV
 
                 return;
             }
-            if (listItem.Text == "Breeds")
+            if (listItem.Text == _lang.Breeds)
             {
                 // 保存Breed设置
                 _currentPetSetup.Breed = newIndex;
@@ -374,7 +408,7 @@ namespace PetsV
         private void OnSpawnMenuItemSelect(UIMenu sender, UIMenuItem selectedItem, int index)
         {
             // 生成点击
-            if (selectedItem.Text == "~g~Spawn")
+            if (selectedItem.Text == _lang.gSpawn)
             {
                 UIMenuListItem listItem = (UIMenuListItem)sender.MenuItems.First();
                 string selectedPetName = listItem.CurrentItem().ToString();
@@ -388,7 +422,7 @@ namespace PetsV
                 {
                     if (selectedPetName == item.Name)
                     {
-                        GTA.UI.Screen.ShowSubtitle($@"~b~{selectedPetName}~w~ is already next to you.");
+                        GTA.UI.Screen.ShowSubtitle($"~b~{selectedPetName}~w~ " + _lang.PetExisted);
                         return;
                     }
                 }
@@ -399,7 +433,7 @@ namespace PetsV
                     return;
                 }
                 // 从目录中读取宠物的json内容
-                string petJson = File.ReadAllText($@"{Config.PathToPetsFolder}\{selectedPetName}.json");
+                string petJson = File.ReadAllText($@"{Configuration.PathToPetsFolder}\{selectedPetName}.json");
                 // 获取玩家、宠物的Ped类型
                 Pet pet = JsonConvert.DeserializeObject<Pet>(petJson);
                 Ped entity = World.CreatePed(pet.Model, safePos);
@@ -426,7 +460,7 @@ namespace PetsV
             }
 
             // 刷新点击
-            if (selectedItem.Text == "~y~Refresh")
+            if (selectedItem.Text == _lang.yRefresh)
             {
                 UIMenuListItem list = (UIMenuListItem)sender.MenuItems.First();
                 list.Items = _fileService.GetAllPetsFromDirectory();
@@ -435,7 +469,7 @@ namespace PetsV
 
         private void OnPetMenuItemSelect(UIMenu sender, UIMenuItem selectedItem, int index)
         {
-            if (selectedItem.Text == "Despawn")
+            if (selectedItem.Text == _lang.Despawn)
             {
                 var name = _menuPet.MenuItems.First().RightLabel;
                 for (int i = 0; i < _spawnedPets.Count; i++)
@@ -461,7 +495,13 @@ namespace PetsV
         {
             if (e.KeyCode == Keys.NumPad2)
             {
-                _menuPetSpawner.Visible = !_menuPetSpawner.Visible;
+                if (!_isPlayerInShopMenu)
+                {
+                    if (!_isOnscreenKeyboardEditing)
+                    {
+                        _menuPetSpawner.Visible = !_menuPetSpawner.Visible;
+                    }
+                }
                 return;
             }
             if (e.KeyCode == Keys.Enter)
@@ -484,7 +524,7 @@ namespace PetsV
                 {
                     if (_isPlayerInShopMenu)
                     {
-                        _player.Position = Config.PetShopPos;
+                        _player.Position = Configuration.PetStorePos;
                         _menuAnimalArk.Visible = false;
                         _isPlayerInShopMenu = false;
                         _currentShowcaseModel.Delete();
@@ -498,14 +538,12 @@ namespace PetsV
             }
             if (e.KeyCode == Keys.NumPad3)
             {
-                ShowSubtitle(_spawnedPets.Count());
+                _spawnedPets.First().Entity.Task.ClearAllImmediately();
                 return;
             }
             if (e.KeyCode == Keys.NumPad9)
             {
-                var pet = _spawnedPets[0];
-                pet.Entity.Health -= 20;
-                _menuPet.Visible = true;
+                ShowSubtitle(Function.Call<bool>(Hash.IS_SYNCHRONIZED_SCENE_RUNNING, _petSceneID));
                 return;
             }
         }
@@ -561,7 +599,5 @@ namespace PetsV
             }
             return;
         }
-
-        private bool _isDebugging;
     }
 }

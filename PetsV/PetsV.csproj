@@ -63,8 +63,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Configs\Config.cs" />
+    <Compile Include="Configs\Configuration.cs" />
     <Compile Include="Enums\PetEnums.cs" />
+    <Compile Include="Models\Config.cs" />
+    <Compile Include="Models\Lang.cs" />
     <Compile Include="Models\Pet.cs" />
     <Compile Include="PetsV.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

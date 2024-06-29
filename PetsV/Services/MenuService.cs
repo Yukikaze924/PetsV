@@ -23,31 +23,33 @@ namespace PetsV.Services
 
         public MenuService()
         {
+            var _lang = PetsV.Instance._lang;
+
             // 购买页面
-            AnimalArkMenu = new UIMenu("", "Animal Ark");
+            AnimalArkMenu = new UIMenu("", _lang.AnimalArk);
             AnimalArkMenu.SetBannerType(NativeUI.Sprite.WriteFileFromResources(Assembly.GetExecutingAssembly(), "PetsV.banner.png"));
-            AnimalArkMenu.AddItem(new UIMenuItem("Name", "Customize your pet's name"));
-            AnimalArkMenu.AddItem(new UIMenuListItem("Pets", species, 0, "Choose a pet as you like"));
-            AnimalArkMenu.AddItem(new UIMenuListItem("Breeds", PetsV.Instance._petService.GetBreedListBySpecies(0), 0, "Choose a pet as you like"));
-            AnimalArkMenu.AddItem(new UIMenuListItem("Gender", genders, 0, "Choose a gender for your pet"));
-            AnimalArkMenu.AddItem(new UIMenuColoredItem("~w~Confirm", Color.FromArgb(133, 187, 101), Color.FromArgb(134, 220, 116)));
+            AnimalArkMenu.AddItem(new UIMenuItem(_lang.Name, "Customize your pet's name"));
+            AnimalArkMenu.AddItem(new UIMenuListItem(_lang.Pets, species, 0, "Choose a pet as you like"));
+            AnimalArkMenu.AddItem(new UIMenuListItem(_lang.Breeds, PetsV.Instance._petService.GetBreedListBySpecies(0), 0, "Choose a pet as you like"));
+            AnimalArkMenu.AddItem(new UIMenuListItem(_lang.Gender, genders, 0, "Choose a gender for your pet"));
+            AnimalArkMenu.AddItem(new UIMenuColoredItem(_lang.wConfirm, Color.FromArgb(133, 187, 101), Color.FromArgb(134, 220, 116)));
 
 
             // 管理页面
-            SpawnMenu = new UIMenu("", "Pet Menu");
+            SpawnMenu = new UIMenu("", _lang.PetMenu);
             SpawnMenu.SetBannerType(NativeUI.Sprite.WriteFileFromResources(Assembly.GetExecutingAssembly(), "PetsV.banner2.png"));
-            SpawnMenu.AddItem(new UIMenuListItem("~b~Pets", PetsV.Instance._fileService.GetAllPetsFromDirectory(), 0));
-            SpawnMenu.AddItem(new UIMenuItem("~g~Spawn"));
-            SpawnMenu.AddItem(new UIMenuItem("~y~Refresh"));
+            SpawnMenu.AddItem(new UIMenuListItem(_lang.bPets, PetsV.Instance._fileService.GetAllPetsFromDirectory(), 0));
+            SpawnMenu.AddItem(new UIMenuItem(_lang.gSpawn));
+            SpawnMenu.AddItem(new UIMenuItem(_lang.yRefresh));
 
 
             //
             PetMenu = new UIMenu("", "");
             PetMenu.SetBannerType(new Sprite("shopui_title_barber", "shopui_title_barber", new Point(0, 0), new Size(0, 0)));
-            PetMenu.AddItem(new UIMenuItem("Name"));
-            PetMenu.AddItem(new UIMenuItem("Health"));
-            PetMenu.AddItem(new UIMenuItem("Gender"));
-            PetMenu.AddItem(new UIMenuItem("Despawn"));
+            PetMenu.AddItem(new UIMenuItem(_lang.Name));
+            PetMenu.AddItem(new UIMenuItem(_lang.Health));
+            PetMenu.AddItem(new UIMenuItem(_lang.Gender));
+            PetMenu.AddItem(new UIMenuItem(_lang.Despawn));
         }
     }
 }
