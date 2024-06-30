@@ -1,6 +1,6 @@
 ﻿using GTA;
+using PetsV.Models;
 using System.Collections.Generic;
-using System.Runtime.Remoting.Messaging;
 using static PetsV.Enums.PetEnums;
 
 namespace PetsV.Services
@@ -77,6 +77,23 @@ namespace PetsV.Services
         {
             if (ped.Model == PedHash.Cat) return false;
             else return true;
+        }
+
+        public bool CanPetUseInVehicleAnimation(Pet pet)
+        {
+            switch (pet.Species)
+            {
+                case Species.Cat:
+                    return false;
+                case Species.Husky:
+                    return true;
+                case Species.Retriever:
+                    return true;
+                case Species.Shepherd:
+                    return true;
+                default:
+                    return false;
+            }
         }
     }
 }
