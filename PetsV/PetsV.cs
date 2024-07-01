@@ -42,7 +42,7 @@ namespace PetsV
         private int _petSceneID;
         private bool _isPetSceneRunning;
         private const float _heading = 20f;
-        private const string _animDictInVehicleStandard = "creatures@rottweiler@in_vehicle@std_car";
+        private readonly string _animDictInVehicleStandard = "creatures@rottweiler@in_vehicle@std_car";
 
         public static PetsV Instance;
 
@@ -224,7 +224,7 @@ namespace PetsV
                                 {
                                     continue;
                                 }
-                                if (!vehicle.IsSeatFree(VehicleSeat.Passenger))
+                                if (!vehicle.IsSeatFree(VehicleSeat.Any))
                                 {
                                     // TODO: 当玩家从副驾上车会触发一瞬间HelpText，待修复。
                                     string name = System.Threading
@@ -239,33 +239,36 @@ namespace PetsV
                                 switch (pet.Species)
                                 {
                                     default:
-                                        OPEN_VEHICLE_DOOR_IF_NO_DAMAGED(vehicle, 1);
                                         Function.Call(Hash.REQUEST_ANIM_DICT, _animDictInVehicleStandard);
-                                        _petSceneID = Function.Call<int>(Hash.CREATE_SYNCHRONIZED_SCENE, 0f, 0f, 0f, 0f, 0f, 0f, 2);
-                                        Function.Call(Hash.ATTACH_SYNCHRONIZED_SCENE_TO_ENTITY, _petSceneID, vehicle, Function.Call<int>(Hash.GET_ENTITY_BONE_INDEX_BY_NAME, vehicle, "seat_pside_f"));
-                                        Function.Call(Hash.CLEAR_PED_TASKS_IMMEDIATELY, pet.Entity);
-                                        Function.Call(Hash.TASK_SYNCHRONIZED_SCENE, pet.Entity, _petSceneID, _animDictInVehicleStandard, "get_in", 1000f, -8f, 10, 0, 1148846080, 0);
-                                        Function.Call(Hash.FORCE_PED_AI_AND_ANIMATION_UPDATE, pet.Entity, false, false);
-                                        _isPetSceneRunning = true;
-                                        while (_isPetSceneRunning)
+                                        if (Function.Call<bool>(Hash.HAS_ANIM_DICT_LOADED, _animDictInVehicleStandard))
                                         {
-                                            Wait(0);
-                                            if (Function.Call<float>(Hash.GET_SYNCHRONIZED_SCENE_PHASE, _petSceneID) > 0.99f)
+                                            OPEN_VEHICLE_DOOR_IF_NO_DAMAGED(vehicle, 1);
+                                            _petSceneID = Function.Call<int>(Hash.CREATE_SYNCHRONIZED_SCENE, 0f, 0f, 0f, 0f, 0f, 0f, 2);
+                                            Function.Call(Hash.ATTACH_SYNCHRONIZED_SCENE_TO_ENTITY, _petSceneID, vehicle, Function.Call<int>(Hash.GET_ENTITY_BONE_INDEX_BY_NAME, vehicle, "seat_pside_f"));
+                                            Function.Call(Hash.CLEAR_PED_TASKS_IMMEDIATELY, pet.Entity);
+                                            Function.Call(Hash.TASK_SYNCHRONIZED_SCENE, pet.Entity, _petSceneID, _animDictInVehicleStandard, "get_in", 1000f, -8f, 10, 0, 1148846080, 0);
+                                            Function.Call(Hash.FORCE_PED_AI_AND_ANIMATION_UPDATE, pet.Entity, false, false);
+                                            _isPetSceneRunning = true;
+                                            while (_isPetSceneRunning)
                                             {
-                                                _isPetSceneRunning = false;
+                                                Wait(0);
+                                                if (Function.Call<float>(Hash.GET_SYNCHRONIZED_SCENE_PHASE, _petSceneID) > 0.99f)
+                                                {
+                                                    _isPetSceneRunning = false;
+                                                }
                                             }
+                                            Wait(0);
+                                            pet.Entity.SetIntoVehicle(vehicle, VehicleSeat.Any);
+                                            Function.Call(Hash.SET_VEHICLE_DOOR_SHUT, vehicle, 1);
+                                            pet.Entity.Task.PlayAnimation
+                                            (
+                                            _animDictInVehicleStandard, "sit", 8f, -8f, -1, AnimationFlags.StayInEndFrame, 0f
+                                            );
                                         }
-                                        Wait(0);
-                                        pet.Entity.SetIntoVehicle(vehicle, VehicleSeat.Passenger);
-                                        Function.Call(Hash.SET_VEHICLE_DOOR_SHUT, vehicle, 1);
-                                        pet.Entity.Task.PlayAnimation
-                                        (
-                                        _animDictInVehicleStandard, "sit", 8f, -8f, -1, AnimationFlags.StayInEndFrame, 0f
-                                        );
                                         break;
 
                                     case Species.Cat:
-                                        pet.Entity.SetIntoVehicle(vehicle, VehicleSeat.Passenger);
+                                        pet.Entity.SetIntoVehicle(vehicle, VehicleSeat.Any);
                                         pet.Entity.Task.PlayAnimation
                                         (
                                         "creatures@cat@amb@world_cat_sleeping_ledge@base", "base", 8f, -8f, -1, AnimationFlags.StayInEndFrame, 0f
@@ -275,6 +278,9 @@ namespace PetsV
                                 _isPlayerDrivingWithPets = true;
                             }
                             break;
+
+                        case VehicleType.Helicopter:
+                            goto case VehicleType.Automobile;
 
                         default:
                             GTA.UI.Screen.ShowSubtitle(_lang.PetDontFitInVeh, 1000);
@@ -305,26 +311,30 @@ namespace PetsV
                                 switch (pet.Species)
                                 {
                                     default:
-                                        OPEN_VEHICLE_DOOR_IF_NO_DAMAGED(vehicle, 1);
                                         Function.Call(Hash.REQUEST_ANIM_DICT, _animDictInVehicleStandard);
-                                        _petSceneID = Function.Call<int>(Hash.CREATE_SYNCHRONIZED_SCENE, 0f, 0f, 0f, 0f, 0f, 0f, 2);
-                                        Function.Call(Hash.ATTACH_SYNCHRONIZED_SCENE_TO_ENTITY, _petSceneID, vehicle, Function.Call<int>(Hash.GET_ENTITY_BONE_INDEX_BY_NAME, vehicle, "seat_pside_f"));
-                                        Function.Call(Hash.CLEAR_PED_TASKS_IMMEDIATELY, pet.Entity);
-                                        Function.Call(Hash.TASK_SYNCHRONIZED_SCENE, pet.Entity, _petSceneID, _animDictInVehicleStandard, "get_out", 1000f, -8f, 10, 0, 1148846080, 0);
-                                        Function.Call(Hash.FORCE_PED_AI_AND_ANIMATION_UPDATE, pet.Entity, false, false);
-                                        _isPetSceneRunning = true;
-                                        while (_isPetSceneRunning)
+                                        if (Function.Call<bool>(Hash.HAS_ANIM_DICT_LOADED, _animDictInVehicleStandard))
                                         {
-                                            Wait(0);
-                                            if (Function.Call<float>(Hash.GET_SYNCHRONIZED_SCENE_PHASE, _petSceneID) > 0.99f)
+                                            OPEN_VEHICLE_DOOR_IF_NO_DAMAGED(vehicle, 1);
+                                            _petSceneID = Function.Call<int>(Hash.CREATE_SYNCHRONIZED_SCENE, 0f, 0f, 0f, 0f, 0f, 0f, 2);
+                                            Function.Call(Hash.ATTACH_SYNCHRONIZED_SCENE_TO_ENTITY, _petSceneID, vehicle, Function.Call<int>(Hash.GET_ENTITY_BONE_INDEX_BY_NAME, vehicle, "seat_pside_f"));
+                                            Function.Call(Hash.CLEAR_PED_TASKS_IMMEDIATELY, pet.Entity);
+                                            Function.Call(Hash.TASK_SYNCHRONIZED_SCENE, pet.Entity, _petSceneID, _animDictInVehicleStandard, "get_out", 1000f, -8f, 10, 0, 1148846080, 0);
+                                            Function.Call(Hash.FORCE_PED_AI_AND_ANIMATION_UPDATE, pet.Entity, false, false);
+                                            _isPetSceneRunning = true;
+                                            while (_isPetSceneRunning)
                                             {
-                                                _isPetSceneRunning = false;
+                                                Wait(0);
+                                                if (Function.Call<float>(Hash.GET_SYNCHRONIZED_SCENE_PHASE, _petSceneID) > 0.99f)
+                                                {
+                                                    _isPetSceneRunning = false;
+                                                }
                                             }
+                                            Wait(0);
+                                            Function.Call(Hash.SET_VEHICLE_DOOR_SHUT, vehicle, 1, false);
+                                            pet.Entity.Task.ClearAllImmediately();
                                         }
-                                        Wait(0);
-                                        Function.Call(Hash.SET_VEHICLE_DOOR_SHUT, vehicle, 1, false);
-                                        pet.Entity.Task.ClearAllImmediately();
                                         break;
+
                                     case Species.Cat:
                                         pet.Entity.Task.ClearAllImmediately();
                                         pet.Entity.Position = vehicle.Position + (vehicle.RightVector * 2);
