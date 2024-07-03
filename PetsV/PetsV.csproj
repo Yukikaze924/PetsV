@@ -76,13 +76,13 @@
     <Compile Include="Services\PetService.cs" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="banner.png" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="banner2.png" />
+    <EmbeddedResource Include="Assets\banner.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\Empty.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

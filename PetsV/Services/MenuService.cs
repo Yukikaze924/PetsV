@@ -27,7 +27,7 @@ namespace PetsV.Services
 
             // 购买页面
             AnimalArkMenu = new UIMenu("", _lang.AnimalArk);
-            AnimalArkMenu.SetBannerType(NativeUI.Sprite.WriteFileFromResources(Assembly.GetExecutingAssembly(), "PetsV.banner.png"));
+            AnimalArkMenu.SetBannerType(NativeUI.Sprite.WriteFileFromResources(Assembly.GetExecutingAssembly(), "PetsV.Assets.banner.png"));
             AnimalArkMenu.AddItem(new UIMenuItem(_lang.Name, "Customize your pet's name"));
             AnimalArkMenu.AddItem(new UIMenuListItem(_lang.Pets, species, 0, "Choose a pet as you like"));
             AnimalArkMenu.AddItem(new UIMenuListItem(_lang.Breeds, PetsV.Instance._petService.GetBreedListBySpecies(0), 0, "Choose a pet as you like"));
@@ -36,16 +36,16 @@ namespace PetsV.Services
 
 
             // 管理页面
-            SpawnMenu = new UIMenu("", _lang.PetMenu);
-            SpawnMenu.SetBannerType(NativeUI.Sprite.WriteFileFromResources(Assembly.GetExecutingAssembly(), "PetsV.banner2.png"));
+            SpawnMenu = new UIMenu("", _lang.PetMenu, new Point(0,-107));
+            SpawnMenu.SetBannerType(NativeUI.Sprite.WriteFileFromResources(Assembly.GetExecutingAssembly(), "PetsV.Assets.Empty.png"));
             SpawnMenu.AddItem(new UIMenuListItem(_lang.bPets, PetsV.Instance._fileService.GetAllPetsFromDirectory(), 0));
             SpawnMenu.AddItem(new UIMenuItem(_lang.gSpawn));
             SpawnMenu.AddItem(new UIMenuItem(_lang.yRefresh));
 
 
             //
-            PetMenu = new UIMenu("", "");
-            PetMenu.SetBannerType(new Sprite("shopui_title_barber", "shopui_title_barber", new Point(0, 0), new Size(0, 0)));
+            PetMenu = new UIMenu("", "INTERACT", new Point(0, -107));
+            PetMenu.SetBannerType(NativeUI.Sprite.WriteFileFromResources(Assembly.GetExecutingAssembly(), "PetsV.Assets.Empty.png"));
             PetMenu.AddItem(new UIMenuItem(_lang.Name));
             PetMenu.AddItem(new UIMenuItem(_lang.Health));
             PetMenu.AddItem(new UIMenuItem(_lang.Gender));

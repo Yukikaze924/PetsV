@@ -68,8 +68,9 @@ namespace PetsV.Services
                     return 3500;
                 case Species.Shepherd:
                     return 4500;
+
                 default:
-                    return 1000;
+                    return -1;
             }
         }
 
@@ -79,20 +80,37 @@ namespace PetsV.Services
             else return true;
         }
 
-        public bool CanPetUseInVehicleAnimation(Pet pet)
+        public void PlayInVehicleAnimation(Pet pet)
         {
             switch (pet.Species)
             {
                 case Species.Cat:
-                    return false;
+                    pet.Entity.Task.PlayAnimation
+                    (
+                    "creatures@cat@amb@world_cat_sleeping_ledge@base",
+                    "base",
+                    8f,
+                    -8f,
+                    -1,
+                    AnimationFlags.StayInEndFrame,
+                    0f
+                    );
+                    return;
+
                 case Species.Husky:
-                    return true;
                 case Species.Retriever:
-                    return true;
                 case Species.Shepherd:
-                    return true;
-                default:
-                    return false;
+                    pet.Entity.Task.PlayAnimation
+                    (
+                    "creatures@rottweiler@in_vehicle@std_car",
+                    "sit",
+                    8f,
+                    -8f,
+                    -1,
+                    AnimationFlags.StayInEndFrame,
+                    0f
+                    );
+                    return;
             }
         }
     }

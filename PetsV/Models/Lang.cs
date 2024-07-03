@@ -5,13 +5,13 @@ namespace PetsV.Models
     [JsonObject(MemberSerialization.OptOut)]
     public class Lang
     {
-        public string AnimalArk { get; set; } = "Animal Ark";
+        public string AnimalArk { get; set; } = "ANIMAL ARK";
         public string Name { get; set; } = "Name";
         public string Pets { get; set; } = "Pets";
         public string Breeds { get; set; } = "Breeds";
         public string Gender { get; set; } = "Gender";
         public string wConfirm { get; set; } = "~w~Confirm";
-        public string PetMenu { get; set; } = "Pet Menu";
+        public string PetMenu { get; set; } = "PET MENU";
         public string bPets { get; set; } = "~b~Pets";
         public string gSpawn { get; set; } = "~g~Spawn";
         public string yRefresh { get; set; } = "~y~Refresh";
