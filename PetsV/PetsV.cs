@@ -10,7 +10,6 @@ using PetsV.Models;
 using PetsV.Services;
 using System;
 using System.Collections.ObjectModel;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
@@ -167,12 +166,14 @@ namespace PetsV
             {
                 if (!_player.IsInVehicle())
                 {
-                    if (!_menuPet.Visible)
+                    if (!_pool.IsAnyMenuOpen())
                     {
                         // 则循环检测每一只宠物是否离玩家的距离小于2米
                         for (int i = 0; i < _spawnedPets.Count; i++)
                         {
-                            if (_spawnedPets[i].Entity.Position.DistanceTo(_player.Position) < 2f)
+                            if (!_menuPet.Visible
+                                &&
+                                _spawnedPets[i].Entity.Position.DistanceTo(_player.Position) < 2f)
                             {
                                 GTA.UI.Screen.ShowHelpTextThisFrame(_lang.PressKeyToInteractWith + $" ~b~{_spawnedPets[i].Name}~w~.");
                                 if (Game.IsControlJustPressed(GTA.Control.Context))
@@ -219,8 +220,9 @@ namespace PetsV
                     {
                         case VehicleType.Automobile:
 
-                            foreach (var pet in _spawnedPets)
+                            for (int i = 0; i < _spawnedPets.Count; i++)
                             {
+                                var pet = _spawnedPets[i];
                                 if (pet.Entity.IsInVehicle(vehicle))
                                 {
                                     if (_isPlayerDrivingWithPets)
@@ -229,15 +231,17 @@ namespace PetsV
                                     }
                                     continue;
                                 }
-                                if (!vehicle.IsSeatFree(VehicleSeat.Any))
+                                int emptySeats = Function.Call<int>(Hash.GET_VEHICLE_MODEL_NUMBER_OF_SEATS, vehicle.Model) - 1;
+                                if (_spawnedPets.Count > emptySeats)
                                 {
-                                    string name = System.Threading
-                                                        .Thread
-                                                        .CurrentThread
-                                                        .CurrentCulture
-                                                        .TextInfo
-                                                        .ToTitleCase(vehicle.DisplayName.ToLower());
-                                    GTA.UI.Screen.ShowHelpText($"~b~{name}'s ~w~passenger seat is full.");
+                                    //string name = System.Threading
+                                    //                    .Thread
+                                    //                    .CurrentThread
+                                    //                    .CurrentCulture
+                                    //                    .TextInfo
+                                    //                    .ToTitleCase(vehicle.DisplayName.ToLower());
+                                    //GTA.UI.Screen.ShowHelpTextThisFrame($"~b~{name}'s ~w~passenger seat is full.");
+                                    GTA.UI.Screen.ShowHelpTextThisFrame("This vehicle does not have enough seats to accommodate all of your pets.");
                                     break;
                                 }
                                 switch (pet.Species)
@@ -264,7 +268,15 @@ namespace PetsV
                                                 }
                                             }
                                             Wait(0);
-                                            pet.Entity.SetIntoVehicle(vehicle, VehicleSeat.Any);
+                                            if (_spawnedPets.Count == 1)
+                                            {
+                                                pet.Entity.SetIntoVehicle(vehicle, VehicleSeat.Passenger);
+                                            }
+                                            else
+                                            {
+                                                var seat = (VehicleSeat)emptySeats - (i + 1);
+                                                pet.Entity.SetIntoVehicle(vehicle, seat);
+                                            }
                                             pet.Entity.Task.PlayAnimation
                                             (
                                             _worldDogInVehicleAnimDict, "sit", 8f, -8f, -1, AnimationFlags.StayInEndFrame, 0f
@@ -274,7 +286,15 @@ namespace PetsV
                                         break;
 
                                     case Species.Cat:
-                                        pet.Entity.SetIntoVehicle(vehicle, VehicleSeat.Any);
+                                        if (_spawnedPets.Count == 1)
+                                        {
+                                            pet.Entity.SetIntoVehicle(vehicle, VehicleSeat.Passenger);
+                                        }
+                                        else
+                                        {
+                                            var seat = (VehicleSeat)emptySeats - (i + 1);
+                                            pet.Entity.SetIntoVehicle(vehicle, seat);
+                                        }
                                         pet.Entity.Task.PlayAnimation
                                         (
                                         "creatures@cat@amb@world_cat_sleeping_ledge@base", "base", 8f, -8f, -1, AnimationFlags.StayInEndFrame, 0f
@@ -491,10 +511,15 @@ namespace PetsV
                 {
                     return;
                 }
-                // 循环检查宠物名字是否已经被生成过
-                foreach (var item in _spawnedPets)
+                if (_player.IsInVehicle() || _isPlayerDrivingWithPets)
                 {
-                    if (selectedPetName == item.Name)
+                    GTA.UI.Screen.ShowSubtitle("You cannot spawn pets in vehicles.");
+                    return;
+                }
+                // 循环检查宠物名字是否已经被生成过
+                foreach (var p in _spawnedPets)
+                {
+                    if (selectedPetName == p.Name)
                     {
                         GTA.UI.Screen.ShowSubtitle($"~b~{selectedPetName}~w~ " + _lang.PetExisted);
                         return;
@@ -523,10 +548,10 @@ namespace PetsV
                 entity.MaxHealth = 1000;
                 entity.Health = 1000;
                 //
-                if (_petService.CanPedAttack(entity))
-                {
-                    Function.Call(Hash.TASK_COMBAT_HATED_TARGETS_AROUND_PED, entity, 1000, 0);
-                }
+                //if (_petService.CanPedAttack(entity))
+                //{
+                //    Function.Call(Hash.TASK_COMBAT_HATED_TARGETS_AROUND_PED, entity, 1000, 0);
+                //}
                 // 创建一个小蓝点
                 var pedBlip = entity.AddBlip();
                 pedBlip.Sprite = (BlipSprite)489;
@@ -570,12 +595,9 @@ namespace PetsV
         {
             if (e.KeyCode == Keys.NumPad2)
             {
-                if (!_isPlayerInShopMenu)
+                if (!_isPlayerInShopMenu && !_isOnscreenKeyboardEditing)
                 {
-                    if (!_isOnscreenKeyboardEditing)
-                    {
-                        _menuPetSpawner.Visible = !_menuPetSpawner.Visible;
-                    }
+                    _menuPetSpawner.Visible = !_menuPetSpawner.Visible;
                 }
                 return;
             }
@@ -613,13 +635,12 @@ namespace PetsV
             }
             if (e.KeyCode == Keys.NumPad3)
             {
-                Debug(_spawnedPets[0].Entity.IsFleeing);
+                Debug(_player.CurrentVehicle.IsSeatFree(VehicleSeat.RightRear));
                 return;
             }
             if (e.KeyCode == Keys.NumPad9)
             {
                 var enemy = World.CreateRandomPed(Configuration.PetStorePos);
-                enemy.Weapons.Give(WeaponHash.Pistol, 100, true, true);
                 enemy.Task.FightAgainst(_player);
                 return;
             }
